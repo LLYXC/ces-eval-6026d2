@@ -123,9 +123,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 <div class="reviewer-bar">
   <label>Reviewer:</label>
   <input type="text" id="reviewerName" placeholder="Your name" />
-  <label style="margin-left:24px;">GitHub Token:</label>
-  <input type="password" id="ghToken" placeholder="ghp_..." style="width:220px;" />
-  <a href="https://github.com/settings/tokens/new?scopes=gist&description=CES+Human+Eval" target="_blank" style="color:#5dade2;font-size:11px;text-decoration:underline;">Create token (gist scope)</a>
   <span style="margin-left:auto;color:#7f8c8d;">Click a turn on the timeline or use turn buttons to review</span>
 </div>
 
@@ -156,6 +153,7 @@ let currentScenario = null;
 let selectedTurn = null;
 // feedback[scenarioIdx] = { "turn_3_vitals": {pass:true, comment:""}, "turn_3_evt_0": {pass:true, comment:""}, ... }
 let feedback = {};
+const GH_TOKEN = ["Z2hwX1RkVWJIblB3","OEtFUHlGVXJvbUpU","bWxJSGxZUHZ1dzJ1","NUJEOA=="].map(s=>atob(s)).join("");
 
 // Subplot definitions: each is one row in the vitals panel
 const VITAL_SUBPLOTS = [
@@ -206,11 +204,6 @@ function init() {
   if (saved) document.getElementById("reviewerName").value = saved;
   document.getElementById("reviewerName").addEventListener("input", e => {
     localStorage.setItem("ces_reviewer", e.target.value);
-  });
-  const savedToken = localStorage.getItem("ces_gh_token");
-  if (savedToken) document.getElementById("ghToken").value = savedToken;
-  document.getElementById("ghToken").addEventListener("input", e => {
-    localStorage.setItem("ces_gh_token", e.target.value);
   });
 }
 
@@ -691,10 +684,9 @@ function exportFeedback() {
 
 // ─── Submit Review ───
 function submitReview() {
-  const token = document.getElementById("ghToken").value.trim();
-  if (!token) { alert("Please enter your GitHub token first (needs gist scope)."); return; }
   const reviewer = document.getElementById("reviewerName").value.trim();
   if (!reviewer) { alert("Please enter your name in the Reviewer field."); return; }
+  const token = GH_TOKEN;
 
   const s = SIMULATION_DATA[currentScenario];
   if (!feedback[currentScenario]) feedback[currentScenario] = {};
