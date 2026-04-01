@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CES Human Evaluation — MPC Results</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f6fa; color: #333; font-size: 14px; }
+
+/* Header */
+.header { background: #2c3e50; color: #fff; padding: 12px 20px; display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.header h1 { font-size: 18px; font-weight: 600; white-space: nowrap; }
+.header select { padding: 6px 10px; border-radius: 4px; border: none; font-size: 13px; max-width: 500px; }
+.header .meta { font-size: 12px; color: #bdc3c7; margin-left: auto; display: flex; gap: 16px; align-items: center; }
+.header .meta span { white-space: nowrap; }
+.header button { padding: 6px 14px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 500; }
+.btn-export { background: #27ae60; color: #fff; }
+.btn-export:hover { background: #219a52; }
+.btn-submit { background: #e74c3c; color: #fff; }
+.btn-submit:hover { background: #c0392b; }
+
+/* Reviewer */
+.reviewer-bar { background: #34495e; color: #fff; padding: 8px 20px; display: flex; align-items: center; gap: 12px; font-size: 13px; }
+.reviewer-bar label { color: #bdc3c7; }
+.reviewer-bar input { padding: 4px 8px; border-radius: 4px; border: none; font-size: 13px; width: 200px; }
+
+/* Main layout */
+.main { display: flex; height: calc(100vh - 140px); overflow: hidden; }
+.left-panel { width: 55%; min-width: 400px; border-right: 1px solid #ddd; display: flex; flex-direction: column; overflow: hidden; background: #fff; }
+.right-panel { flex: 1; overflow-y: auto; padding: 16px; background: #fafbfc; }
+
+/* Vitals chart */
+.vitals-section { padding: 8px 16px; border-bottom: 1px solid #eee; overflow-y: auto; }
+.vitals-section h3 { font-size: 13px; margin-bottom: 4px; color: #666; }
+.vitals-canvas { width: 100%; cursor: crosshair; }
+
+/* Event timeline */
+.events-section { flex: 1; overflow-y: auto; padding: 12px 16px; }
+.events-section h3 { font-size: 13px; margin-bottom: 8px; color: #666; }
+.timeline-canvas { width: 100%; height: 160px; cursor: pointer; }
+
+/* Turn indicator on left panel */
+.turn-indicator { font-size: 12px; color: #999; padding: 4px 16px; border-bottom: 1px solid #eee; background: #f9f9f9; }
+
+/* Right panel detail */
+.turn-detail { margin-bottom: 20px; }
+.turn-detail h2 { font-size: 16px; margin-bottom: 12px; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 6px; }
+.turn-detail h3 { font-size: 14px; margin: 12px 0 6px; color: #555; }
+
+.detail-card { background: #fff; border: 1px solid #e0e0e0; border-radius: 6px; padding: 12px; margin-bottom: 12px; }
+.detail-card.selected { border-color: #3498db; box-shadow: 0 0 0 2px rgba(52,152,219,0.2); }
+.detail-card .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.detail-card .card-title { font-weight: 600; font-size: 13px; }
+.detail-card .card-type { font-size: 11px; padding: 2px 8px; border-radius: 10px; color: #fff; }
+.type-vitals { background: #e74c3c; }
+.type-arrival { background: #9b59b6; }
+.type-bed { background: #95a5a6; }
+.type-assessment { background: #3498db; }
+.type-medication { background: #e67e22; }
+.type-test_result { background: #27ae60; }
+.type-order { background: #f39c12; }
+.type-procedure { background: #1abc9c; }
+.type-default { background: #7f8c8d; }
+
+.detail-content { font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word; max-height: 300px; overflow-y: auto; background: #f8f9fa; padding: 8px; border-radius: 4px; margin-bottom: 8px; }
+
+/* Feedback controls */
+.feedback-controls { display: flex; align-items: flex-start; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.feedback-controls .btn-group { display: flex; gap: 4px; }
+.feedback-controls button { padding: 4px 12px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500; background: #fff; transition: all 0.15s; }
+.feedback-controls button.pass-btn.active { background: #27ae60; color: #fff; border-color: #27ae60; }
+.feedback-controls button.fail-btn.active { background: #e74c3c; color: #fff; border-color: #e74c3c; }
+.feedback-controls button:hover { opacity: 0.85; }
+.feedback-controls textarea { width: 100%; min-height: 50px; padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 12px; resize: vertical; font-family: inherit; }
+
+/* Progress bar */
+.progress-bar { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #bdc3c7; }
+.progress-fill { height: 6px; border-radius: 3px; background: #27ae60; transition: width 0.3s; }
+.progress-track { width: 100px; height: 6px; border-radius: 3px; background: #555; }
+
+/* Rubrics */
+.rubrics-section { border-top: 2px solid #ddd; background: #fff; max-height: 40vh; overflow-y: auto; }
+.rubric-toggle { width: 100%; padding: 10px 20px; background: #ecf0f1; border: none; border-bottom: 1px solid #ddd; cursor: pointer; font-size: 14px; font-weight: 600; text-align: left; color: #2c3e50; }
+.rubric-toggle:hover { background: #dfe6e9; }
+.rubric-content { display: none; padding: 12px 20px; font-size: 13px; line-height: 1.6; white-space: pre-wrap; background: #fafbfc; border-bottom: 1px solid #eee; }
+.rubric-content.open { display: block; }
+
+/* No selection state */
+.no-selection { display: flex; align-items: center; justify-content: center; height: 100%; color: #999; font-size: 15px; }
+
+
+/* Legend for events */
+.event-legend { display: flex; gap: 10px; font-size: 11px; margin-top: 4px; flex-wrap: wrap; }
+.event-legend span { display: flex; align-items: center; gap: 4px; }
+.event-legend .dot { width: 8px; height: 8px; border-radius: 50%; }
+
+/* Turn nav in right panel */
+.turn-nav { display: flex; gap: 4px; margin-bottom: 12px; flex-wrap: wrap; }
+.turn-nav button { padding: 4px 8px; border: 1px solid #ddd; border-radius: 4px; background: #fff; cursor: pointer; font-size: 11px; }
+.turn-nav button.active { background: #3498db; color: #fff; border-color: #3498db; }
+.turn-nav button:hover { background: #eee; }
+.turn-nav button.active:hover { background: #2980b9; }
+.turn-nav button.has-event { font-weight: 700; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>CES Human Evaluation</h1>
+  <select id="scenarioSelect"></select>
+  <div class="meta">
+    <span id="metaInfo"></span>
+    <div class="progress-bar">
+      <span id="progressText">0/0</span>
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+    </div>
+    <button class="btn-export" onclick="exportFeedback()">Export JSON</button>
+    <button class="btn-submit" onclick="submitReview()">Submit Review</button>
+  </div>
+</div>
+
+<div class="reviewer-bar">
+  <label>Reviewer:</label>
+  <input type="text" id="reviewerName" placeholder="Your name" />
+  <label style="margin-left:24px;">GitHub Token:</label>
+  <input type="password" id="ghToken" placeholder="ghp_..." style="width:220px;" />
+  <a href="https://github.com/settings/tokens/new?scopes=gist&description=CES+Human+Eval" target="_blank" style="color:#5dade2;font-size:11px;text-decoration:underline;">Create token (gist scope)</a>
+  <span style="margin-left:auto;color:#7f8c8d;">Click a turn on the timeline or use turn buttons to review</span>
+</div>
+
+<div class="main">
+  <div class="left-panel">
+    <div class="vitals-section">
+      <h3>Vitals Timeline (1 turn = 5 min)</h3>
+      <canvas class="vitals-canvas" id="vitalsCanvas"></canvas>
+    </div>
+    <div class="events-section">
+      <h3>EHR Events Timeline</h3>
+      <canvas class="timeline-canvas" id="eventsCanvas"></canvas>
+      <div class="event-legend" id="eventLegend"></div>
+    </div>
+  </div>
+  <div class="right-panel" id="rightPanel">
+    <div class="turn-nav" id="turnNav"></div>
+    <div id="turnDetail"><div class="no-selection">Select a turn from the timeline to view details</div></div>
+  </div>
+</div>
+
+<div class="rubrics-section" id="rubricsSection"></div>
+
+<script src="data.js"></script>
+<script>
+// ─── State ───
+let currentScenario = null;
+let selectedTurn = null;
+// feedback[scenarioIdx] = { "turn_3_vitals": {pass:true, comment:""}, "turn_3_evt_0": {pass:true, comment:""}, ... }
+let feedback = {};
+
+// Subplot definitions: each is one row in the vitals panel
+const VITAL_SUBPLOTS = [
+  { key: "HR",   label: "HR (bpm)",   color: "#e74c3c", lines: [{get: v => v.HR, color: "#e74c3c"}] },
+  { key: "BP",   label: "BP (mmHg)",  color: "#9b59b6", lines: [
+      {get: v => { if (!v.BP) return null; return +v.BP.split("/")[0]; }, color: "#9b59b6", label: "sys"},
+      {get: v => { if (!v.BP) return null; return +v.BP.split("/")[1]; }, color: "#c39bd3", label: "dia"},
+    ]},
+  { key: "Temp", label: "Temp (\u00B0F)", color: "#e67e22", lines: [{get: v => v.Temp, color: "#e67e22"}] },
+  { key: "RR",   label: "RR (/min)",  color: "#3498db", lines: [{get: v => v.RR, color: "#3498db"}] },
+  { key: "SpO2", label: "SpO2 (%)",   color: "#27ae60", lines: [{get: v => v.SpO2, color: "#27ae60"}] },
+];
+
+const EVENT_COLORS = {
+  arrival: "#9b59b6",
+  bed_assignment_auto_queued: "#95a5a6",
+  procedure_complete: "#1abc9c",
+  assessment_complete: "#3498db",
+  medication_administered: "#e67e22",
+  test_result: "#27ae60",
+  order_complete: "#f39c12",
+};
+const EVENT_LABELS = {
+  arrival: "Arrival",
+  bed_assignment_auto_queued: "Bed Queue",
+  procedure_complete: "Procedure",
+  assessment_complete: "Assessment",
+  medication_administered: "Medication",
+  test_result: "Test Result",
+  order_complete: "Order Complete",
+};
+
+// ─── Init ───
+function init() {
+  const sel = document.getElementById("scenarioSelect");
+  SIMULATION_DATA.forEach((s, i) => {
+    const opt = document.createElement("option");
+    opt.value = i;
+    opt.textContent = `${s.patient_id} [${s.intervention_level}]`;
+    sel.appendChild(opt);
+  });
+  sel.addEventListener("change", () => loadScenario(+sel.value));
+  loadFeedbackFromStorage();
+  loadScenario(0);
+  buildRubrics();
+  // Restore reviewer name and token
+  const saved = localStorage.getItem("ces_reviewer");
+  if (saved) document.getElementById("reviewerName").value = saved;
+  document.getElementById("reviewerName").addEventListener("input", e => {
+    localStorage.setItem("ces_reviewer", e.target.value);
+  });
+  const savedToken = localStorage.getItem("ces_gh_token");
+  if (savedToken) document.getElementById("ghToken").value = savedToken;
+  document.getElementById("ghToken").addEventListener("input", e => {
+    localStorage.setItem("ces_gh_token", e.target.value);
+  });
+}
+
+function loadScenario(idx) {
+  currentScenario = idx;
+  selectedTurn = null;
+  const s = SIMULATION_DATA[idx];
+  document.getElementById("metaInfo").textContent = `MPC: ${s.mpc_id} | Level: ${s.intervention_level}`;
+  drawVitals(s);
+  drawEvents(s);
+  buildTurnNav(s);
+  document.getElementById("turnDetail").innerHTML = '<div class="no-selection">Select a turn from the timeline to view details</div>';
+  updateProgress();
+}
+
+// ─── Vitals Chart (Canvas) — 5 subplots ───
+function drawVitals(scenario) {
+  const canvas = document.getElementById("vitalsCanvas");
+  const dpr = window.devicePixelRatio || 1;
+  const parentW = canvas.parentElement.getBoundingClientRect().width;
+
+  const rowH = 52;
+  const gap = 2;
+  const xPadBottom = 22;
+  const totalH = VITAL_SUBPLOTS.length * rowH + (VITAL_SUBPLOTS.length - 1) * gap + xPadBottom;
+
+  canvas.width = parentW * dpr;
+  canvas.height = totalH * dpr;
+  canvas.style.width = parentW + "px";
+  canvas.style.height = totalH + "px";
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
+  const W = parentW;
+  ctx.clearRect(0, 0, W, totalH);
+
+  const vbt = scenario.vitals_by_turn;
+  const turns = Object.keys(vbt).map(Number).sort((a, b) => a - b);
+  if (!turns.length) return;
+  const maxTurn = turns[turns.length - 1];
+
+  const pad = { l: 56, r: 14 };
+  const cw = W - pad.l - pad.r;
+  const xScale = t => pad.l + (t / Math.max(maxTurn, 1)) * cw;
+
+  // Draw each subplot
+  VITAL_SUBPLOTS.forEach((sp, si) => {
+    const top = si * (rowH + gap);
+    const plotH = rowH;
+    const innerT = 3, innerB = 3;
+    const ch = plotH - innerT - innerB;
+
+    // Compute range across all lines in this subplot
+    let gMin = Infinity, gMax = -Infinity;
+    sp.lines.forEach(line => {
+      turns.forEach(t => {
+        const val = line.get(vbt[String(t)]);
+        if (val != null) { gMin = Math.min(gMin, val); gMax = Math.max(gMax, val); }
+      });
+    });
+    const margin = (gMax - gMin) * 0.18 || 3;
+    const lo = gMin - margin, hi = gMax + margin;
+    const yScale = val => top + innerT + (1 - (val - lo) / (hi - lo)) * ch;
+
+    // Background
+    ctx.fillStyle = si % 2 === 0 ? "#fafbfc" : "#f5f6f8";
+    ctx.fillRect(0, top, W, plotH);
+
+    // Selected turn highlight
+    if (selectedTurn !== null && selectedTurn <= maxTurn) {
+      ctx.fillStyle = "rgba(52,152,219,0.12)";
+      ctx.fillRect(xScale(selectedTurn) - 3, top, 6, plotH);
+    }
+
+    // Y-axis: top and bottom boundary lines with min/max labels only
+    const yTop = top + innerT, yBot = top + innerT + ch;
+    ctx.strokeStyle = "#e0e0e0"; ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(pad.l, yTop); ctx.lineTo(pad.l + cw, yTop); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(pad.l, yBot); ctx.lineTo(pad.l + cw, yBot); ctx.stroke();
+    // Min/max labels
+    ctx.font = "9px sans-serif"; ctx.textAlign = "right"; ctx.fillStyle = "#aaa";
+    const fmtHi = sp.key === "Temp" ? Math.ceil(gMax * 10) / 10 : Math.ceil(gMax);
+    const fmtLo = sp.key === "Temp" ? Math.floor(gMin * 10) / 10 : Math.floor(gMin);
+    ctx.fillText(fmtHi, pad.l - 3, yTop + 8);
+    ctx.fillText(fmtLo, pad.l - 3, yBot - 1);
+
+    // Subplot label (inside plot area, top-left)
+    ctx.font = "bold 9px sans-serif";
+    ctx.fillStyle = sp.color;
+    ctx.textAlign = "left";
+    ctx.fillText(sp.label, pad.l + 3, top + 10);
+
+    // Draw lines
+    sp.lines.forEach(line => {
+      ctx.strokeStyle = line.color;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      let started = false;
+      turns.forEach(t => {
+        const val = line.get(vbt[String(t)]);
+        if (val == null) return;
+        const x = xScale(t), y = yScale(val);
+        if (!started) { ctx.moveTo(x, y); started = true; }
+        else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+      // Dots
+      turns.forEach(t => {
+        const val = line.get(vbt[String(t)]);
+        if (val == null) return;
+        ctx.beginPath();
+        ctx.arc(xScale(t), yScale(val), 1.5, 0, Math.PI * 2);
+        ctx.fillStyle = line.color;
+        ctx.fill();
+      });
+    });
+
+    // BP subplot: add sys/dia legend
+    if (sp.key === "BP" && sp.lines.length === 2) {
+      ctx.font = "9px sans-serif";
+      ctx.textAlign = "left";
+      ctx.fillStyle = sp.lines[0].color;
+      ctx.fillText("sys", pad.l + cw + 2, top + 14);
+      ctx.fillStyle = sp.lines[1].color;
+      ctx.fillText("dia", pad.l + cw + 2, top + 24);
+    }
+  });
+
+  // Shared x-axis at bottom
+  const xAxisY = VITAL_SUBPLOTS.length * (rowH + gap) - gap;
+  ctx.strokeStyle = "#ccc"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(pad.l, xAxisY); ctx.lineTo(pad.l + cw, xAxisY); ctx.stroke();
+
+  ctx.fillStyle = "#999"; ctx.font = "10px sans-serif"; ctx.textAlign = "center";
+  const step = Math.max(1, Math.ceil(maxTurn / 15));
+  for (let t = 0; t <= maxTurn; t += step) {
+    const x = xScale(t);
+    ctx.fillText(t, x, xAxisY + 14);
+    ctx.beginPath(); ctx.moveTo(x, xAxisY); ctx.lineTo(x, xAxisY + 3); ctx.strokeStyle = "#bbb"; ctx.stroke();
+  }
+
+  // Store for click handler
+  canvas._scenario = scenario;
+  canvas._maxTurn = maxTurn;
+  canvas._padL = pad.l;
+  canvas._cw = cw;
+}
+
+document.getElementById("vitalsCanvas").addEventListener("click", function(e) {
+  const rect = this.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const s = this._scenario;
+  if (!s) return;
+  const t = Math.round((x - this._padL) / this._cw * this._maxTurn);
+  if (t >= 0 && t <= this._maxTurn) selectTurn(t);
+});
+
+// ─── Events Timeline (Canvas) ───
+let eventDots = []; // [{x, y, r, turn, eventIdx}]
+
+function drawEvents(scenario) {
+  const canvas = document.getElementById("eventsCanvas");
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.parentElement.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = 160 * dpr;
+  canvas.style.width = rect.width + "px";
+  canvas.style.height = "160px";
+  const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
+  const W = rect.width, H = 160;
+  ctx.clearRect(0, 0, W, H);
+
+  const events = scenario.events;
+  const vbt = scenario.vitals_by_turn;
+  const allTurns = new Set(Object.keys(vbt).map(Number));
+  events.forEach(e => allTurns.add(e.turn));
+  const maxTurn = Math.max(...allTurns, 1);
+
+  const pad = { l: 50, r: 20, t: 15, b: 25 };
+  const cw = W - pad.l - pad.r;
+  const ch = H - pad.t - pad.b;
+  const xScale = t => pad.l + (t / maxTurn) * cw;
+
+  // Axis
+  ctx.strokeStyle = "#ddd"; ctx.lineWidth = 1;
+  ctx.beginPath();
+  const midY = pad.t + ch / 2;
+  ctx.moveTo(pad.l, midY); ctx.lineTo(pad.l + cw, midY);
+  ctx.stroke();
+
+  // X labels
+  ctx.fillStyle = "#999"; ctx.font = "11px sans-serif"; ctx.textAlign = "center";
+  const step = Math.max(1, Math.ceil(maxTurn / 15));
+  for (let t = 0; t <= maxTurn; t += step) {
+    ctx.fillText(t, xScale(t), H - 5);
+  }
+
+  // Selected turn highlight
+  if (selectedTurn !== null && selectedTurn <= maxTurn) {
+    ctx.fillStyle = "rgba(52,152,219,0.08)";
+    ctx.fillRect(xScale(selectedTurn) - 3, pad.t, 6, ch);
+  }
+
+  // Group events by turn for vertical staggering
+  const byTurn = {};
+  events.forEach((e, i) => {
+    const t = e.turn;
+    if (!byTurn[t]) byTurn[t] = [];
+    byTurn[t].push({ event: e, idx: i });
+  });
+
+  eventDots = [];
+  const dotR = 6;
+
+  Object.keys(byTurn).sort((a, b) => +a - +b).forEach(turn => {
+    const group = byTurn[turn];
+    const x = xScale(+turn);
+    const totalHeight = (group.length - 1) * (dotR * 2.5);
+    const startY = midY - totalHeight / 2;
+
+    group.forEach((item, j) => {
+      const y = startY + j * dotR * 2.5;
+      const color = EVENT_COLORS[item.event.type] || "#7f8c8d";
+
+      // Check feedback status
+      const fbKey = `turn_${item.event.turn}_evt_${item.idx}`;
+      const fb = getFeedback(currentScenario, fbKey);
+
+      ctx.beginPath();
+      ctx.arc(x, y, dotR, 0, Math.PI * 2);
+      ctx.fillStyle = color;
+      ctx.fill();
+
+      if (fb && !fb.pass) {
+        ctx.strokeStyle = "#e74c3c"; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.arc(x, y, dotR + 2, 0, Math.PI * 2); ctx.stroke();
+      }
+
+      eventDots.push({ x, y, r: dotR + 2, turn: +turn, eventIdx: item.idx });
+    });
+  });
+
+  // Legend
+  const leg = document.getElementById("eventLegend");
+  leg.innerHTML = "";
+  const types = [...new Set(events.map(e => e.type))];
+  types.forEach(t => {
+    const c = EVENT_COLORS[t] || "#7f8c8d";
+    const label = EVENT_LABELS[t] || t;
+    leg.innerHTML += `<span><span class="dot" style="background:${c}"></span>${label}</span>`;
+  });
+
+  canvas._scenario = scenario;
+  canvas._xScale = xScale;
+  canvas._maxTurn = maxTurn;
+  canvas._pad = pad;
+  canvas._cw = cw;
+}
+
+document.getElementById("eventsCanvas").addEventListener("click", function(e) {
+  const rect = this.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+
+  // Check if clicked on a dot
+  for (const dot of eventDots) {
+    const dx = x - dot.x, dy = y - dot.y;
+    if (dx * dx + dy * dy <= dot.r * dot.r) {
+      selectTurn(dot.turn);
+      return;
+    }
+  }
+
+  // Otherwise snap to nearest turn
+  const s = this._scenario;
+  if (!s) return;
+  const pad = this._pad;
+  const cw = this._cw;
+  const maxTurn = this._maxTurn;
+  const t = Math.round((x - pad.l) / cw * maxTurn);
+  if (t >= 0 && t <= maxTurn) selectTurn(t);
+});
+
+// ─── Turn Navigation ───
+function buildTurnNav(scenario) {
+  const nav = document.getElementById("turnNav");
+  nav.innerHTML = "";
+  const vbt = scenario.vitals_by_turn;
+  const allTurns = new Set(Object.keys(vbt).map(Number));
+  scenario.events.forEach(e => allTurns.add(e.turn));
+  const sorted = [...allTurns].sort((a, b) => a - b);
+  const eventTurns = new Set(scenario.events.map(e => e.turn));
+
+  sorted.forEach(t => {
+    const btn = document.createElement("button");
+    btn.textContent = t;
+    if (eventTurns.has(t)) btn.classList.add("has-event");
+    btn.addEventListener("click", () => selectTurn(t));
+    nav.appendChild(btn);
+  });
+}
+
+// ─── Select Turn ───
+function selectTurn(turn) {
+  selectedTurn = turn;
+  const s = SIMULATION_DATA[currentScenario];
+
+  // Update turn nav active state
+  document.querySelectorAll(".turn-nav button").forEach(btn => {
+    btn.classList.toggle("active", +btn.textContent === turn);
+  });
+
+  // Redraw charts with highlight
+  drawVitals(s);
+  drawEvents(s);
+
+  // Build detail view
+  const detail = document.getElementById("turnDetail");
+  let html = `<div class="turn-detail"><h2>Turn ${turn} (${turn * 5} min)</h2>`;
+
+  // Vitals
+  const vt = s.vitals_by_turn[String(turn)];
+  if (vt) {
+    const fbKey = `turn_${turn}_vitals`;
+    const fb = getFeedback(currentScenario, fbKey);
+    html += buildCard("Vitals", "vitals",
+      `HR: ${vt.HR ?? "—"}  |  BP: ${vt.BP ?? "—"}  |  Temp: ${vt.Temp ?? "—"}  |  RR: ${vt.RR ?? "—"}  |  SpO2: ${vt.SpO2 ?? "—"}`,
+      fbKey, fb
+    );
+  }
+
+  // Events at this turn
+  const turnEvents = [];
+  s.events.forEach((e, i) => {
+    if (e.turn === turn) turnEvents.push({ event: e, idx: i });
+  });
+
+  turnEvents.forEach(({ event, idx }) => {
+    const fbKey = `turn_${turn}_evt_${idx}`;
+    const fb = getFeedback(currentScenario, fbKey);
+    const typeLabel = EVENT_LABELS[event.type] || event.type;
+    let content = "";
+
+    if (event.order_type) content += `Order Type: ${event.order_type}\n`;
+    if (event.message) content += `${event.message}\n`;
+
+    const data = event.data || {};
+    if (data.results) content += `\n--- Results ---\n${data.results}\n`;
+    if (data.outcome && data.outcome !== data.results) content += `\n--- Outcome ---\n${data.outcome}\n`;
+    if (data.medication_name) content += `Medication: ${data.medication_name}\n`;
+    if (data.procedure_name) content += `Procedure: ${data.procedure_name}\n`;
+    if (data.test_name) content += `Test: ${data.test_name}\n`;
+    if (data.target_query) content += `Query: ${data.target_query}\n`;
+    if (data.turn_ordered != null) content += `Ordered turn: ${data.turn_ordered} | Completed turn: ${data.turn_completed}\n`;
+
+    if (!content.trim()) content = JSON.stringify(data, null, 2);
+
+    html += buildCard(`${typeLabel}: ${data.procedure_name || data.test_name || data.medication_name || event.order_type || event.type}`,
+      event.type, content.trim(), fbKey, fb);
+  });
+
+  if (!vt && turnEvents.length === 0) {
+    html += '<p style="color:#999;margin-top:20px;">No vitals or events at this turn.</p>';
+  }
+
+  html += "</div>";
+  detail.innerHTML = html;
+  updateProgress();
+}
+
+function buildCard(title, type, content, fbKey, fb) {
+  const typeClass = type === "vitals" ? "type-vitals" :
+    type === "arrival" ? "type-arrival" :
+    type.includes("bed") ? "type-bed" :
+    type.includes("assessment") ? "type-assessment" :
+    type.includes("medication") ? "type-medication" :
+    type.includes("test") ? "type-test_result" :
+    type.includes("order") ? "type-order" :
+    type.includes("procedure") ? "type-procedure" : "type-default";
+
+  const isPass = !fb || fb.pass;
+  const comment = fb ? (fb.comment || "") : "";
+  const commentDisplay = isPass ? "none" : "block";
+
+  return `
+    <div class="detail-card">
+      <div class="card-header">
+        <span class="card-title">${escHtml(title)}</span>
+        <span class="card-type ${typeClass}">${escHtml(EVENT_LABELS[type] || type)}</span>
+      </div>
+      <div class="detail-content">${escHtml(content)}</div>
+      <div class="feedback-controls">
+        <div class="btn-group">
+          <button class="pass-btn ${isPass ? 'active' : ''}" onclick="setFeedback('${fbKey}', true, this)">Pass</button>
+          <button class="fail-btn ${!isPass ? 'active' : ''}" onclick="setFeedback('${fbKey}', false, this)">Fail</button>
+        </div>
+        <textarea placeholder="Comment (required for fail)..." style="display:${commentDisplay}" oninput="updateComment('${fbKey}', this.value)">${escHtml(comment)}</textarea>
+      </div>
+    </div>
+  `;
+}
+
+function escHtml(s) {
+  const d = document.createElement("div");
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// ─── Feedback ───
+function getFeedback(scenarioIdx, key) {
+  if (!feedback[scenarioIdx]) return null;
+  return feedback[scenarioIdx][key] || null;
+}
+
+function setFeedback(key, pass, btn) {
+  if (!feedback[currentScenario]) feedback[currentScenario] = {};
+  const existing = feedback[currentScenario][key];
+  feedback[currentScenario][key] = { pass, comment: existing ? existing.comment : "" };
+
+  // Update UI
+  const group = btn.parentElement;
+  group.querySelector(".pass-btn").classList.toggle("active", pass);
+  group.querySelector(".fail-btn").classList.toggle("active", !pass);
+  const textarea = group.parentElement.querySelector("textarea");
+  textarea.style.display = pass ? "none" : "block";
+
+  saveFeedbackToStorage();
+  updateProgress();
+  // Redraw events to show red rings on failed items
+  drawEvents(SIMULATION_DATA[currentScenario]);
+}
+
+function updateComment(key, value) {
+  if (!feedback[currentScenario]) feedback[currentScenario] = {};
+  if (!feedback[currentScenario][key]) feedback[currentScenario][key] = { pass: true, comment: "" };
+  feedback[currentScenario][key].comment = value;
+  saveFeedbackToStorage();
+}
+
+function saveFeedbackToStorage() {
+  try { localStorage.setItem("ces_feedback", JSON.stringify(feedback)); } catch (e) {}
+}
+
+function loadFeedbackFromStorage() {
+  try {
+    const raw = localStorage.getItem("ces_feedback");
+    if (raw) feedback = JSON.parse(raw);
+  } catch (e) {}
+}
+
+function updateProgress() {
+  const s = SIMULATION_DATA[currentScenario];
+  // Count total items for this scenario
+  let total = 0;
+  const vbt = s.vitals_by_turn;
+  total += Object.keys(vbt).length; // vitals
+  total += s.events.length; // events
+  // Count reviewed
+  let reviewed = 0;
+  const fb = feedback[currentScenario] || {};
+  Object.keys(fb).forEach(k => { if (fb[k]) reviewed++; });
+  document.getElementById("progressText").textContent = `${reviewed}/${total}`;
+  const pct = total ? (reviewed / total * 100) : 0;
+  document.getElementById("progressFill").style.width = pct + "%";
+}
+
+function exportFeedback() {
+  const reviewer = document.getElementById("reviewerName").value || "anonymous";
+  const exportData = buildExportData();
+  const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `ces_human_eval_${reviewer}_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ─── Submit Review ───
+function submitReview() {
+  const token = document.getElementById("ghToken").value.trim();
+  if (!token) { alert("Please enter your GitHub token first (needs gist scope)."); return; }
+  const reviewer = document.getElementById("reviewerName").value.trim();
+  if (!reviewer) { alert("Please enter your name in the Reviewer field."); return; }
+
+  const s = SIMULATION_DATA[currentScenario];
+  if (!feedback[currentScenario]) feedback[currentScenario] = {};
+  const fb = feedback[currentScenario];
+
+  // Count how many items are not yet reviewed
+  let unreviewed = 0;
+  Object.keys(s.vitals_by_turn).forEach(turn => {
+    if (!fb[`turn_${turn}_vitals`]) unreviewed++;
+  });
+  s.events.forEach((e, i) => {
+    if (!fb[`turn_${e.turn}_evt_${i}`]) unreviewed++;
+  });
+
+  if (unreviewed > 0) {
+    const ok = confirm(`Finish review by passing the remaining ${unreviewed} unchecked items?`);
+    if (!ok) return;
+    // Auto-pass all unreviewed items
+    Object.keys(s.vitals_by_turn).forEach(turn => {
+      const key = `turn_${turn}_vitals`;
+      if (!fb[key]) fb[key] = { pass: true, comment: "" };
+    });
+    s.events.forEach((e, i) => {
+      const key = `turn_${e.turn}_evt_${i}`;
+      if (!fb[key]) fb[key] = { pass: true, comment: "" };
+    });
+    saveFeedbackToStorage();
+    updateProgress();
+    drawEvents(s);
+    if (selectedTurn !== null) selectTurn(selectedTurn);
+  }
+
+  // Build export payload
+  const exportData = buildExportData();
+  createGist(token, reviewer, exportData);
+}
+
+function buildExportData() {
+  const reviewer = document.getElementById("reviewerName").value || "anonymous";
+  const exportData = { reviewer, exported_at: new Date().toISOString(), feedback: {} };
+  Object.keys(feedback).forEach(idx => {
+    const s = SIMULATION_DATA[+idx];
+    if (!s) return;
+    exportData.feedback[s.mpc_id] = {
+      patient_id: s.patient_id,
+      intervention_level: s.intervention_level,
+      items: feedback[idx]
+    };
+  });
+  return exportData;
+}
+
+async function createGist(token, reviewer, data) {
+  const btn = document.querySelector(".btn-submit");
+  btn.textContent = "Submitting...";
+  btn.disabled = true;
+
+  const filename = `ces_human_eval_${reviewer}_${new Date().toISOString().slice(0,10)}.json`;
+  try {
+    const resp = await fetch("https://api.github.com/gists", {
+      method: "POST",
+      headers: {
+        "Authorization": "token " + token,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        description: `CES Human Eval — ${reviewer} — ${new Date().toISOString().slice(0,10)}`,
+        public: false,
+        files: { [filename]: { content: JSON.stringify(data, null, 2) } }
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.message || `HTTP ${resp.status}`);
+    }
+
+    const gist = await resp.json();
+    btn.textContent = "Submitted!";
+    btn.style.background = "#27ae60";
+    alert("Review submitted!\\n\\nGist URL:\\n" + gist.html_url);
+    setTimeout(() => { btn.textContent = "Submit Review"; btn.style.background = ""; btn.disabled = false; }, 3000);
+  } catch (err) {
+    btn.textContent = "Submit Review";
+    btn.disabled = false;
+    alert("Failed to create gist: " + err.message + "\\n\\nMake sure your token has the 'gist' scope.");
+  }
+}
+
+// ─── Rubrics ───
+const RUBRICS = {
+  "Vitals Trajectory": `You are a clinical reviewer evaluating whether a simulated emergency department patient's vital sign trajectory is medically plausible.
+
+IMPORTANT CONTEXT:
+- Each turn represents 5 minutes of real ED time.
+- You are evaluating the ENTIRE vitals trajectory up to and including the current turn, not just a single data point.
+- Focus on whether the overall trend and current values are physiologically plausible given the diagnosis and clinical events.
+- Many conditions (including infections like COVID-19) can present with normal or near-normal vitals, especially early or in mild cases. Do not fail vitals solely because they are normal if a mild/early presentation is clinically plausible.
+- Consider the trajectory as a whole: are the values internally consistent? Is the trend (stable, improving, worsening) plausible given what has happened?
+
+Return JSON with exactly two keys:
+  "passed": true if the vitals trajectory is plausible, false if not
+  "reasoning": a concise explanation`,
+
+  "H&P (History & Physical)": `You are a clinical reviewer evaluating whether a simulated emergency department patient's H&P documentation is medically plausible.
+
+EVALUATION CRITERIA — judge ALL of the following:
+1. SYMPTOM CONSISTENCY: Are the reported symptoms, their severity, and their progression/resolution consistent with the ground truth diagnosis and the elapsed time?
+2. PHYSICAL EXAM PLAUSIBILITY: Are the physical exam findings (or their absence) plausible for the diagnosis? Would you expect these findings at this point in the clinical course?
+3. TEMPORAL COHERENCE: If this is a follow-up H&P, do symptom changes (improvement, worsening, new symptoms) make clinical sense given the time elapsed and any interventions administered?
+4. INTERNAL CONSISTENCY: Are the H&P findings consistent with the vital signs trajectory? For example, a patient described as 'in no acute distress' should not have vitals showing severe tachycardia or hypotension.
+5. INTERVENTION RESPONSE: If medications or procedures were given, does the H&P appropriately reflect their expected clinical effects (or lack thereof) given the time elapsed since administration?
+
+Return JSON with exactly two keys:
+  "passed": true if the H&P is plausible on all criteria, false if any criterion fails
+  "reasoning": explain which criteria pass or fail and why`,
+
+  "Laboratory Results": `You are a clinical reviewer evaluating whether a simulated emergency department patient's laboratory result is medically plausible.
+
+EVALUATION CRITERIA — judge ALL of the following:
+1. DIAGNOSTIC CONSISTENCY: Are the lab values (both normal and abnormal) consistent with what you would expect for the ground truth diagnosis? Flag values that are unexpectedly normal when they should be abnormal (or vice versa) for this condition.
+2. VALUE PLAUSIBILITY: Are the specific numeric values within physiologically realistic ranges? Are the magnitudes of abnormalities proportional to the clinical presentation severity?
+3. INTERNAL CONSISTENCY: Do the lab components make sense together? For example, if WBC is elevated, is the differential consistent? If renal function is impaired, are related electrolytes affected appropriately?
+4. CLINICAL CORRELATION: Do the lab results correlate with the vital signs and clinical presentation? For example, a severely infected patient with high WBC should likely show fever or tachycardia in the vitals.
+5. INTERVENTION EFFECT: If medications or IV fluids were administered before this lab draw, do the results appropriately reflect any expected pharmacological effects (e.g., potassium changes after IV fluids, coagulation changes after anticoagulants)?
+6. SERIAL COMPARISON: If prior lab results of the same type exist in the history, are the changes (or stability) between values clinically plausible given the elapsed time and any interventions?
+
+Return JSON with exactly two keys:
+  "passed": true if the lab result is plausible on all criteria, false if any criterion fails
+  "reasoning": explain which criteria pass or fail and why`,
+
+  "Imaging Results": `You are a clinical reviewer (with radiology expertise) evaluating whether a simulated emergency department patient's imaging result is medically plausible.
+
+EVALUATION CRITERIA — judge ALL of the following:
+1. DIAGNOSTIC CONSISTENCY: Are the imaging findings (both positive and negative) consistent with the ground truth diagnosis? Does the report identify findings you would expect for this condition? Are there findings that contradict the diagnosis?
+2. REPORT QUALITY: Is the imaging report structured appropriately for the study type (e.g., CT, X-ray, ultrasound)? Does it include relevant anatomical detail, measurements where expected, and appropriate use of radiological terminology?
+3. CLINICAL CORRELATION: Do the imaging findings correlate with the patient's symptoms, physical exam findings, and vital signs? For example, a CT showing large pneumothorax should correlate with respiratory distress and abnormal vitals.
+4. INCIDENTAL FINDINGS PLAUSIBILITY: If incidental findings are reported, are they realistic and age-appropriate? Are they over- or under-reported relative to what a real radiology report would include?
+5. NEGATIVE FINDINGS: Are important negative findings (pertinent negatives) appropriately mentioned? For example, a CT head for trauma should comment on the absence of hemorrhage, midline shift, and fractures.
+6. SERIAL COMPARISON: If prior imaging of the same body region exists in the history, are changes (or stability) between studies clinically plausible given the elapsed time and any interventions?
+
+Return JSON with exactly two keys:
+  "passed": true if the imaging result is plausible on all criteria, false if any criterion fails
+  "reasoning": explain which criteria pass or fail and why`
+};
+
+function buildRubrics() {
+  const section = document.getElementById("rubricsSection");
+  section.innerHTML = "<h3 style='padding:10px 20px;font-size:14px;color:#666;border-bottom:1px solid #ddd;'>Evaluation Rubrics (from trajectory_checker.py)</h3>";
+  Object.keys(RUBRICS).forEach(name => {
+    const toggleId = "rubric_" + name.replace(/\s/g, "_");
+    section.innerHTML += `
+      <button class="rubric-toggle" onclick="toggleRubric('${toggleId}')">\u25B6 ${name}</button>
+      <div class="rubric-content" id="${toggleId}">${escHtml(RUBRICS[name])}</div>
+    `;
+  });
+}
+
+function toggleRubric(id) {
+  const el = document.getElementById(id);
+  el.classList.toggle("open");
+  const btn = el.previousElementSibling;
+  btn.textContent = (el.classList.contains("open") ? "\u25BC " : "\u25B6 ") + btn.textContent.slice(2);
+}
+
+// ─── Window resize ───
+window.addEventListener("resize", () => {
+  if (currentScenario !== null) {
+    const s = SIMULATION_DATA[currentScenario];
+    drawVitals(s);
+    drawEvents(s);
+  }
+});
+
+init();
+</script>
+</body>
+</html>
