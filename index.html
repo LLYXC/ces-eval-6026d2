@@ -730,10 +730,42 @@ function buildExportData() {
   Object.keys(feedback).forEach(idx => {
     const s = SIMULATION_DATA[+idx];
     if (!s) return;
+    const fb = feedback[idx];
+    const items = {};
+
+    // Enrich each feedback entry with descriptive info
+    Object.keys(fb).forEach(key => {
+      const entry = fb[key];
+      const enriched = { pass: entry.pass, comment: entry.comment };
+
+      if (key.includes("_vitals")) {
+        const turn = +key.split("_")[1];
+        const v = s.vitals_by_turn[String(turn)];
+        enriched.type = "vitals";
+        enriched.turn = turn;
+        enriched.time_min = turn * 5;
+        if (v) enriched.values = v;
+      } else if (key.includes("_evt_")) {
+        const evtIdx = +key.split("_evt_")[1];
+        const evt = s.events[evtIdx];
+        if (evt) {
+          const d = evt.data || {};
+          enriched.type = evt.type;
+          enriched.turn = evt.turn;
+          enriched.time_min = evt.turn * 5;
+          enriched.order_type = evt.order_type || "";
+          enriched.name = d.procedure_name || d.test_name || d.medication_name || "";
+          if (evt.event_id) enriched.event_id = evt.event_id;
+        }
+      }
+
+      items[key] = enriched;
+    });
+
     exportData.feedback[s.mpc_id] = {
       patient_id: s.patient_id,
       intervention_level: s.intervention_level,
-      items: feedback[idx]
+      items
     };
   });
   return exportData;
