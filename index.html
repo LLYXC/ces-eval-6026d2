@@ -211,7 +211,7 @@ function loadScenario(idx) {
   currentScenario = idx;
   selectedTurn = null;
   const s = SIMULATION_DATA[idx];
-  document.getElementById("metaInfo").textContent = `MPC: ${s.mpc_id} | Level: ${s.intervention_level}`;
+  document.getElementById("metaInfo").textContent = `MPC: ${s.mpc_id} | Level: ${s.intervention_level} | Dx: ${s.ground_truth || "N/A"}`;
   drawVitals(s);
   drawEvents(s);
   buildTurnNav(s);
@@ -522,7 +522,11 @@ function selectTurn(turn) {
 
   // Build detail view
   const detail = document.getElementById("turnDetail");
-  let html = `<div class="turn-detail"><h2>Turn ${turn} (${turn * 5} min)</h2>`;
+  let html = `<div class="turn-detail">`;
+  if (s.ground_truth) {
+    html += `<div style="background:#fef9e7;border:1px solid #f9e79f;border-radius:4px;padding:6px 10px;margin-bottom:10px;font-size:13px;"><strong>Ground Truth Diagnosis:</strong> ${escHtml(s.ground_truth)}</div>`;
+  }
+  html += `<h2>Turn ${turn} (${turn * 5} min)</h2>`;
 
   // Vitals
   const vt = s.vitals_by_turn[String(turn)];
