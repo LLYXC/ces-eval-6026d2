@@ -153,7 +153,20 @@ let currentScenario = null;
 let selectedTurn = null;
 // feedback[scenarioIdx] = { "turn_3_vitals": {pass:true, comment:""}, "turn_3_evt_0": {pass:true, comment:""}, ... }
 let feedback = {};
-const GH_TOKEN = ["Z2hwX1RkVWJIblB3","OEtFUHlGVXJvbUpU","bWxJSGxZUHZ1dzJ1","NUJEOA=="].map(s=>atob(s)).join("");
+// Gist token arrives in the URL fragment (.../#t=<token>) so it is never committed to
+// the public repo. It is cached per-browser and stripped from the address bar, so a
+// plain reload still submits.
+let GH_TOKEN = "";
+(function readToken() {
+  const m = location.hash.match(/[#&]t=([^&]+)/);
+  if (m) {
+    GH_TOKEN = decodeURIComponent(m[1]);
+    try { localStorage.setItem("ces_gist_token_gpt41", GH_TOKEN); } catch (e) {}
+    history.replaceState(null, "", location.pathname + location.search);
+  } else {
+    try { GH_TOKEN = localStorage.getItem("ces_gist_token_gpt41") || ""; } catch (e) {}
+  }
+})();
 
 // Subplot definitions: each is one row in the vitals panel
 const VITAL_SUBPLOTS = [
@@ -200,10 +213,10 @@ function init() {
   loadScenario(0);
   buildRubrics();
   // Restore reviewer name and token
-  const saved = localStorage.getItem("ces_reviewer");
+  const saved = localStorage.getItem("ces_reviewer_gpt41");
   if (saved) document.getElementById("reviewerName").value = saved;
   document.getElementById("reviewerName").addEventListener("input", e => {
-    localStorage.setItem("ces_reviewer", e.target.value);
+    localStorage.setItem("ces_reviewer_gpt41", e.target.value);
   });
 }
 
@@ -648,12 +661,12 @@ function updateComment(key, value) {
 }
 
 function saveFeedbackToStorage() {
-  try { localStorage.setItem("ces_feedback", JSON.stringify(feedback)); } catch (e) {}
+  try { localStorage.setItem("ces_feedback_gpt41", JSON.stringify(feedback)); } catch (e) {}
 }
 
 function loadFeedbackFromStorage() {
   try {
-    const raw = localStorage.getItem("ces_feedback");
+    const raw = localStorage.getItem("ces_feedback_gpt41");
     if (raw) feedback = JSON.parse(raw);
   } catch (e) {}
 }
@@ -681,7 +694,7 @@ function exportFeedback() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `ces_human_eval_${reviewer}_${new Date().toISOString().slice(0,10)}.json`;
+  a.download = `ces_human_eval_gpt41_${reviewer}_${new Date().toISOString().slice(0,10)}.json`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -691,6 +704,10 @@ function submitReview() {
   const reviewer = document.getElementById("reviewerName").value.trim();
   if (!reviewer) { alert("Please enter your name in the Reviewer field."); return; }
   const token = GH_TOKEN;
+  if (!token) {
+    alert("This page is missing its submission key.\n\nOpen the full link from the invitation email, or click \"Export JSON\" and email the downloaded file.");
+    return;
+  }
 
   const s = SIMULATION_DATA[currentScenario];
   if (!feedback[currentScenario]) feedback[currentScenario] = {};
@@ -780,7 +797,7 @@ async function createGist(token, reviewer, data) {
   btn.textContent = "Submitting...";
   btn.disabled = true;
 
-  const filename = `ces_human_eval_${reviewer}_${new Date().toISOString().slice(0,10)}.json`;
+  const filename = `ces_human_eval_gpt41_${reviewer}_${new Date().toISOString().slice(0,10)}.json`;
   try {
     const resp = await fetch("https://api.github.com/gists", {
       method: "POST",
@@ -789,7 +806,7 @@ async function createGist(token, reviewer, data) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        description: `CES Human Eval — ${reviewer} — ${new Date().toISOString().slice(0,10)}`,
+        description: `CES Human Eval (GPT-4.1) — ${reviewer} — ${new Date().toISOString().slice(0,10)}`,
         public: false,
         files: { [filename]: { content: JSON.stringify(data, null, 2) } }
       })
