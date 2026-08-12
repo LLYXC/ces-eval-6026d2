@@ -568,7 +568,7 @@ function selectTurn(turn) {
     if (event.message) content += `${event.message}\n`;
 
     const data = event.data || {};
-    if (data.results) content += `\n--- Results ---\n${data.results}\n`;
+    if (data.results) content += `\n--- Results ---\n${formatResults(data.results, "")}\n`;
     if (data.outcome && data.outcome !== data.results) content += `\n--- Outcome ---\n${data.outcome}\n`;
     if (data.medication_name) content += `Medication: ${data.medication_name}\n`;
     if (data.procedure_name) content += `Procedure: ${data.procedure_name}\n`;
@@ -627,6 +627,22 @@ function escHtml(s) {
   const d = document.createElement("div");
   d.textContent = s;
   return d.innerHTML;
+}
+
+// Imaging results arrive as a narrative string, but panel labs arrive as an object whose shape
+// varies by scenario: a flat analyte->value map, a {test, specimen, components:{...}} wrapper, or
+// deeper nesting, and occasionally an array. Interpolating those directly rendered
+// "[object Object]", hiding every lab value from the reviewer. No gpt-4.1 trajectory has
+// object-valued results, so this is a no-op here; it is kept identical to the DeepSeek arm so
+// both arms run the same rendering code.
+function formatResults(v, indent) {
+  if (v === null || typeof v !== "object") return `${indent}${v}`;
+  const entries = Array.isArray(v) ? v.map((x, i) => [`- ${i + 1}`, x]) : Object.entries(v);
+  return entries.map(([k, val]) =>
+    (val !== null && typeof val === "object")
+      ? `${indent}${k}:\n${formatResults(val, indent + "  ")}`
+      : `${indent}${k}: ${val}`
+  ).join("\n");
 }
 
 // ─── Feedback ───
